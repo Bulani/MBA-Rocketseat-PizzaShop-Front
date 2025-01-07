@@ -1,9 +1,11 @@
+import { useMutation } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
 import { useForm } from 'react-hook-form'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
+import { signIn } from '@/api/sign-in'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,31 +17,43 @@ const signInForm = z.object({
 type SignInForm = z.infer<typeof signInForm>
 
 export function SignIn() {
+  const [searchParams] = useSearchParams()
+
   const {
     register,
     handleSubmit,
     formState: { isSubmitting },
-  } = useForm<SignInForm>()
+  } = useForm<SignInForm>({
+    defaultValues: {
+      email: searchParams.get('email') ?? '',
+    },
+  })
+
+  const { mutateAsync: authenticate } = useMutation({
+    mutationFn: signIn,
+  })
 
   async function handleSignIn(data: SignInForm) {
     try {
-      console.log(data)
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      await authenticate({ email: data.email })
 
-      toast.success('Enviamos um link de autenticação para o seu e-mail!', {
+      toast.success('Enviamos um link de autenticação para seu e-mail.', {
         action: {
-          label: 'Reenviar e-mail',
-          onClick: () => handleSignIn(data),
+          label: 'Reenviar',
+          onClick: () => {
+            handleSignIn(data)
+          },
         },
       })
-    } catch {
-      toast.error('Credenciais inválidas!')
+    } catch (error) {
+      toast.error('Credenciais inválidas.')
     }
   }
 
   return (
     <>
       <Helmet title="Login" />
+
       <div className="p-8">
         <Button variant="ghost" asChild className="absolute right-8 top-8">
           <Link to="/sign-up">Novo estabelecimento</Link>
@@ -55,13 +69,13 @@ export function SignIn() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(handleSignIn)} className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit(handleSignIn)}>
             <div className="space-y-2">
               <Label htmlFor="email">Seu e-mail</Label>
               <Input id="email" type="email" {...register('email')} />
             </div>
 
-            <Button className="w-full" type="submit" disabled={isSubmitting}>
+            <Button disabled={isSubmitting} className="w-full" type="submit">
               Acessar painel
             </Button>
           </form>
